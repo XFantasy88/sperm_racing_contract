@@ -20,6 +20,8 @@ contract Racing is Ownable {
 
     uint256 private totalBets;
 
+    address public tokenAddress;
+
     mapping(uint256 => Bet) bets;
 
     event NewBet(address indexed bettor, uint256 spermNum, uint256 amount);
@@ -27,15 +29,17 @@ contract Racing is Ownable {
 
     receive() external payable {}
 
-    constructor() Ownable() {
+    constructor(address token) Ownable() {
         spermsCount = 5;
+        tokenAddress = token;
     }
 
-    function createBet(uint256 spermNum) external payable {
+    function createBet(uint256 spermNum, uint256 amount) external {
         require(spermNum < spermsCount, "Invalid sperm number");
-        uint256 amount = msg.value;
 
         require(amount > 0, "Insufficient balance");
+
+        _transferToken(tokenAddress, msg.sender, address(this), amount);
 
         uint256 random = uint256(
             keccak256(
@@ -72,7 +76,7 @@ contract Racing is Ownable {
 
         uint256 amount = bet.amount * 2;
 
-        _transferEth(msg.sender, amount);
+        _transferToken(tokenAddress, address(this), msg.sender, amount);
 
         emit Claimed(msg.sender, bet.spermNum, amount);
     }
@@ -87,6 +91,10 @@ contract Racing is Ownable {
 
     function setSpermsCount(uint256 count) external onlyOwner {
         spermsCount = count;
+    }
+
+    function setTokenAddress(address token) external onlyOwner {
+        tokenAddress = token;
     }
 
     function getActiveBets() external view returns (Bet[] memory) {
