@@ -11,7 +11,7 @@ contract Racing is Ownable {
     struct Bet {
         address bettor;
         bool rewarded;
-        uint256 spermNo;
+        uint256 spermNum;
         uint256 amount;
         uint256 winnerSperm;
     }
@@ -22,12 +22,17 @@ contract Racing is Ownable {
 
     mapping(uint256 => Bet) bets;
 
+    event NewBet(address indexed bettor, uint256 spermNum, uint256 amount);
+    event Claimed(address indexed bettor, uint256 spermNum, uint256 amount);
+
+    receive() external payable {}
+
     constructor() Ownable() {
         spermsCount = 5;
     }
 
-    function createBet(uint256 spermNo) external payable {
-        require(spermNo < spermsCount, "Invalid sperm number");
+    function createBet(uint256 spermNum) external payable {
+        require(spermNum < spermsCount, "Invalid sperm number");
         uint256 amount = msg.value;
 
         require(amount > 0, "Insufficient balance");
@@ -38,7 +43,7 @@ contract Racing is Ownable {
                     block.timestamp,
                     blockhash(block.number - 1),
                     spermsCount,
-                    spermNo,
+                    spermNum,
                     amount,
                     msg.sender,
                     block.chainid
@@ -46,12 +51,14 @@ contract Racing is Ownable {
             )
         ) % spermsCount;
 
-        Bet memory newBet = Bet(msg.sender, false, spermNo, amount, random);
+        Bet memory newBet = Bet(msg.sender, false, spermNum, amount, random);
 
         uint256 betId = totalBets;
 
         totalBets += 1;
         bets[betId] = newBet;
+
+        emit NewBet(msg.sender, spermNum, amount);
     }
 
     function claimReward(uint256 betId) external {
@@ -61,11 +68,13 @@ contract Racing is Ownable {
         require(bet.bettor == msg.sender, "Not bettor");
         require(!bet.rewarded, "Already rewarded");
 
-        require(bet.winnerSperm == bet.spermNo, "Not winner");
+        require(bet.winnerSperm == bet.spermNum, "Not winner");
 
         uint256 amount = bet.amount * 2;
 
         _transferEth(msg.sender, amount);
+
+        emit Claimed(msg.sender, bet.spermNum, amount);
     }
 
     function withdraw(address token, uint256 amount) external onlyOwner {
