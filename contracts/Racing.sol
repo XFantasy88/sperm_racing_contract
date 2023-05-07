@@ -9,6 +9,7 @@ contract Racing is Ownable {
     using SafeERC20 for IERC20;
 
     struct Bet {
+        uint256 betId;
         address bettor;
         bool rewarded;
         uint256 spermNum;
@@ -22,7 +23,7 @@ contract Racing is Ownable {
 
     address public tokenAddress;
 
-    mapping(uint256 => Bet) bets;
+    mapping(uint256 => Bet) public bets;
 
     event NewBet(address indexed bettor, uint256 spermNum, uint256 amount);
     event Claimed(address indexed bettor, uint256 spermNum, uint256 amount);
@@ -55,9 +56,16 @@ contract Racing is Ownable {
             )
         ) % spermsCount;
 
-        Bet memory newBet = Bet(msg.sender, false, spermNum, amount, random);
-
         uint256 betId = totalBets;
+
+        Bet memory newBet = Bet(
+            betId,
+            msg.sender,
+            false,
+            spermNum,
+            amount,
+            random
+        );
 
         totalBets += 1;
         bets[betId] = newBet;
@@ -73,6 +81,9 @@ contract Racing is Ownable {
         require(!bet.rewarded, "Already rewarded");
 
         require(bet.winnerSperm == bet.spermNum, "Not winner");
+
+        bet.rewarded = true;
+        bets[betId] = bet;
 
         uint256 amount = bet.amount * 2;
 
@@ -97,11 +108,11 @@ contract Racing is Ownable {
         tokenAddress = token;
     }
 
-    function getActiveBets() external view returns (Bet[] memory) {
+    function getMyBets(address bettor) external view returns (Bet[] memory) {
         uint256 activeCounts = 0;
 
         for (uint i = 0; i < totalBets; i++) {
-            if (bets[i].bettor == msg.sender && !bets[i].rewarded) {
+            if (bets[i].bettor == bettor) {
                 activeCounts++;
             }
         }
@@ -110,7 +121,7 @@ contract Racing is Ownable {
 
         uint256 activeId = 0;
         for (uint i = 0; i < totalBets; i++) {
-            if (bets[i].bettor == msg.sender && !bets[i].rewarded) {
+            if (bets[i].bettor == bettor) {
                 activeBets[activeId] = bets[i];
                 activeId += 1;
             }
